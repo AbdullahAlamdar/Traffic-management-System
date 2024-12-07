@@ -26,6 +26,12 @@ struct vehicle{
     int pathLength;
     int pathIndex;
 
+    void displayVehicleInfo(){
+        cout<<"Vehicle id : "<<id<<endl;
+        cout<<"Current Location : "<<currentLocation<<endl;
+        cout<<"Destination : "<<destination<<endl;
+    }
+
 };
 
 class list{
@@ -232,15 +238,107 @@ class graph{
         cout<<"Entered edge ("<<src<<" -> "<<dest<<" ) , not found ! "<<endl; 
     }
 
-    void locateVehicle(string id, int currentLocation,int destination){
-        cars[vehicleCount].currentLocation=currentLocation;
-        cars[vehicleCount].destination=destination;
-        cars[vehicleCount].id=id;
-        cars[vehicleCount].pathLength=calculatePathLength(currentLocation,destination);
-        cout<<"Shortest Path for vehicle "<<cars[vehicleCount].id;
-        graph::DijkstraAlgo(currentLocation,destination);
-        vehicleCount++;
+void locateVehicle(string id, int currentLocation, int destination) {
+    if (vehicleCount >= 50) {
+        cout << "Maximum vehicle limit reached!" << endl;
+        return;
     }
+
+    vehicle& v = cars[vehicleCount];
+    v.currentLocation = currentLocation;
+    v.destination = destination;
+    v.id = id;
+    v.pathIndex = 0; // Start from the beginning of the path
+
+    // Calculate the shortest path using Dijkstra's Algorithm
+    int distance[vertices];
+    int parent[vertices];
+    bool visited[vertices];
+
+    // Initialize arrays
+    for (int i = 0; i < vertices; i++) {
+        distance[i] = INT8_MAX;
+        parent[i] = -1;
+        visited[i] = false;
+    }
+    distance[currentLocation] = 0;
+
+    // Dijkstra's Algorithm
+    for (int count = 0; count < vertices - 1; count++) {
+        int minDistance = INT8_MAX, u = -1;
+        for (int i = 0; i < vertices; i++) {
+            if (!visited[i] && distance[i] < minDistance) {
+                minDistance = distance[i];
+                u = i;
+            }
+        }
+
+        if (u == -1) break; // No more reachable nodes
+        visited[u] = true;
+
+        ListNode* neighbor = ListArray[u].head;
+        while (neighbor != nullptr) {
+            int v = neighbor->dest;
+            int weight = neighbor->weight;
+            if (!visited[v] && distance[u] != INT8_MAX && distance[u] + weight < distance[v]) {
+                distance[v] = distance[u] + weight;
+                parent[v] = u;
+            }
+            neighbor = neighbor->next;
+        }
+    }
+
+    // Backtrack to find the shortest path
+    int path[vertices];
+    int pathLength = 0;
+    for (int v = destination; v != -1; v = parent[v]) {
+        path[pathLength++] = v;
+    }
+
+    // Reverse the path to store it in the vehicle object
+    for (int i = 0; i < pathLength; i++) {
+        v.shortestPath[i] = path[pathLength - 1 - i];
+    }
+    v.pathLength = pathLength;
+
+    // Display the shortest path
+    cout << "Shortest path for vehicle " << id << ": ";
+    for (int i = 0; i < pathLength; i++) {
+        cout << v.shortestPath[i];
+        if (i < pathLength - 1) cout << " -> ";
+    }
+    cout << endl;
+
+    vehicleCount++;
+}
+
+
+    void stimulateVehicles() {
+    cout << "Simulating vehicle movements" << endl;
+
+    for (int i = 0; i < vehicleCount; i++) {
+        vehicle& v = cars[i];
+
+        //  to Check if the vehicle has already reached its destination
+        if (v.pathIndex >= v.pathLength - 1) {
+            cout << "Vehicle " << v.id << " has already reached its destination: " << v.destination << endl;
+        } else {
+            // to Move the vehicle to the next location in its path
+            v.pathIndex++;
+            v.currentLocation = v.shortestPath[v.pathIndex];
+
+            // display the updated status
+            cout << "Vehicle " << v.id << " moved to intersection " << v.currentLocation << endl;
+
+            //  to Check if this is the destination
+            if (v.currentLocation == v.destination) {
+                cout << "Vehicle " << v.id << " has reached its destination: " << v.destination << endl;
+            }
+        }
+    }
+    cout << "Simulation step complete." << endl;
+}
+
 
 
     void displayGraph(){
@@ -315,6 +413,10 @@ int main(){
     // cout<<endl;
     //cityGraph.LoadVehiclesFromFile("vehicles.csv");
     cityGraph.locateVehicle("v1",0,4);
-   // cityGraph.locateVehicle("v2",1,3);
-   // cityGraph.locateVehicle("v3",0,2);
+    cityGraph.locateVehicle("v2",1,3);
+    cityGraph.locateVehicle("v3",0,2);
+
+    cout<<endl<<endl;
+
+    cityGraph.stimulateVehicles();
 }
