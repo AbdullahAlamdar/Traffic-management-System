@@ -90,6 +90,73 @@ class graph{
         }
     }
 
+
+    void printPath(int vertex, int parent[]) {
+        if (parent[vertex] == -1) {
+            cout << vertex;
+            return;
+        }
+        printPath(parent[vertex], parent);
+        cout << " -> " << vertex;
+    }
+
+    void DijkstraAlgo(int src,int dest){
+        // arrays 
+        int distance[vertices];
+        int parent[vertices];
+        bool visited[vertices];
+
+        // initial values
+
+        for(int i=0;i<vertices;i++){
+            distance[i]=INT8_MAX; // infinite
+            parent[i]=-1;    // no parent
+            visited[i]=false; // not visited yet
+        }
+
+        // initializing the source to source dist
+        distance[src]=0;
+
+        // main algo loop
+        for(int count=0;count<vertices-1;count++){
+            // for finding the vertex with min distance that has not yet been visited 
+            int minDistance=INT8_MAX;// infinite
+            int u=-1;
+            // 2nd loop 
+            for(int i=0;i<vertices;i++){
+                if(!visited[i] && distance[i]<minDistance){
+                    minDistance=distance[i];
+                    u=i;
+                }
+            }
+
+            visited[u]=true;
+
+            //for updating the distances of neighbouring vertices
+            ListNode*neighbour=ListArray[u].head;
+            while(neighbour!=nullptr){
+                int v=neighbour->dest;
+                int weight=neighbour->weight;
+
+                // for updating the distance if a shorter path is find
+                if (!visited[v] && distance[u] != INT8_MAX && distance[u] + weight < distance[v]) {
+                distance[v] = distance[u] + weight;
+                parent[v] = u;
+            }
+            neighbour = neighbour->next;
+            }
+        }
+            if (distance[dest] == INT8_MAX) {
+                cout << "No path exists from " << src << " to " << dest << endl;
+            } else {
+                cout << "Shortest path distance: " << distance[dest] << endl;
+                cout << "Path: ";
+                printPath(dest, parent);
+                cout << endl;
+            } 
+    }
+
+
     void displayGraph(){
         for(int i=0;i<vertices;i++){
             cout<<"Intersection "<<i+1<<" : ";
@@ -136,8 +203,11 @@ int main(){
     //displaying the map
     cout<<"City Road Network : "<<endl;
     cityGraph.displayGraph();
-    cityGraph.removeIntersection(0);
+    //cityGraph.removeIntersection(0);
     cout<<endl;
     cout<<endl;
-    cityGraph.displayGraph();
+    // cityGraph.displayGraph();
+    // cout<<endl;
+    // cout<<endl;
+    cityGraph.DijkstraAlgo(0,4);
 }
