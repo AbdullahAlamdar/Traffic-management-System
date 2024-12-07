@@ -1,0 +1,4 @@
+VehicleID,StartIntersection,EndIntersection
+V1,0,4
+V2,1,3
+V3,0,2
