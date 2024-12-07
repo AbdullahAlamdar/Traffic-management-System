@@ -34,6 +34,83 @@ struct vehicle{
 
 };
 
+class PQNode{
+    public:
+    int roadId;
+    int vehicleDensity;
+    int greenTime;
+    PQNode*next;
+
+    PQNode(int roadId,int vehicleDensity,int greenTime){
+        this->roadId=roadId;
+        this->vehicleDensity=vehicleDensity;
+        this->greenTime=greenTime;
+        next=nullptr;
+    }
+};
+
+class priorityQueue{
+    public:
+    PQNode*head;
+
+    priorityQueue(){
+        head=nullptr;
+    }
+
+    void push(int id,int density,int greenTime){
+        PQNode*nn=new PQNode(id,density,greenTime);
+        if(head==nullptr || head->vehicleDensity<density){
+            nn->next=head;
+            head=nn;
+
+        }
+        else{
+            PQNode*temp=head;
+            while(temp->next !=nullptr && temp->next->vehicleDensity >=density){
+                temp=temp->next;
+            }
+            nn->next=temp->next;
+            temp->next=nn;
+        }
+    }
+    PQNode*pop(){
+        if(head==nullptr){
+            cout<<"Priority Queue is empty ! "<<endl;
+            return nullptr;
+        }
+        else{
+            PQNode*temp=head;
+            head=head->next;
+            return temp;
+        }
+    }
+    bool isPQEmpty(){
+        if(head==nullptr){
+            return true;
+        }
+        return false;
+    }
+    PQNode* searchAndPop(int routeId){
+        PQNode*temp=head;
+        while(temp!=nullptr){
+            if(temp->roadId==routeId){
+                return temp;
+            }
+        }
+        cout<<"Road with route id : "<<routeId<<" Not Found ! "<<endl;
+        return nullptr;
+    }
+    void displayPQ(){
+        PQNode*temp=head;
+        cout<<"Priority Queue : ";
+        while(temp!=nullptr){
+            cout<<"(Road id : "<<temp->roadId<<", Density "<<temp->vehicleDensity<<" )"<<endl;
+            temp=temp->next;
+        }
+        cout<<"NULL"<<endl;
+    }
+};
+
 class list{
     public:
     ListNode*head;
@@ -389,6 +466,56 @@ void locateVehicle(string id, int currentLocation, int destination) {
         file.close();
     }
 };
+
+
+class trafficSignalManager{
+    public:
+    priorityQueue pq;
+    bool emergencyMode;
+
+    trafficSignalManager(){
+        emergencyMode=false;
+    }
+
+    void addroad(int roadId,int density){
+        pq.push(roadId,density,30);
+    }
+
+    void manageSignals(){
+        if(emergencyMode){
+            cout<<"Route id : ";
+            int id;
+            cin>>id;
+            PQNode*road=pq.searchAndPop(id);
+            if(road){
+                cout<<"Green signal , granted (Route id : "<<id<<" )"<<endl;
+                emergencyMode=false;
+            }
+            else{
+                cout<<"Can not grant green signal (Route id : "<<id<<" )"<<endl;
+            }
+
+        }
+        else{
+            while (!pq.isPQEmpty()) {
+                PQNode* road = pq.pop();
+                if (road) {
+                    cout << "Granting green signal to Road " << road->roadId;
+                    cout<< " with density " << road->vehicleDensity << endl;
+                    delete road; // Clean up memory
+                }
+            }
+
+        }
+    }
+    void declareRoadEmergency(){
+        cout<<"Emergency mode declared ! "<<endl;
+        emergencyMode=true;
+    }
+
+};
+
+
 int main(){
     int vertices=5;
     graph cityGraph(vertices);
@@ -419,4 +546,11 @@ int main(){
     cout<<endl<<endl;
 
     cityGraph.stimulateVehicles();
+
+    trafficSignalManager tsm;
+    tsm.addroad(1,50);
+    tsm.addroad(2,100);
+    tsm.addroad(3,30);
+
+    tsm.manageSignals();
 }
