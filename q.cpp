@@ -2,17 +2,20 @@
 #include<fstream>
 #include<istream>
 #include<string>
+#include<chrono>
 using namespace std;
 
 class ListNode{
     public:
     int dest;
     int weight;
+    bool blocked;
     ListNode*next;
 
     ListNode(int dest, int weight){
         this->dest=dest;
         this->weight=weight;
+        this->blocked=false;
         next=nullptr;
     }
 
@@ -238,17 +241,82 @@ class list{
 
 };
 
+class trafficSignalManager{
+    public:
+    priorityQueue pq;
+    bool emergencyMode;
+    int emergencyPath[100];
+    int pathLength;// length for emergency path 
+
+    trafficSignalManager(){
+        emergencyMode=false;
+        pathLength=0;
+    }
+
+    void addroad(int roadId,int density){
+        pq.push(roadId,density,30);
+    }
+
+    void manageSignals(){
+        if(emergencyMode){
+            cout<<"Route id : ";
+            int id;
+            cin>>id;
+            PQNode*road=pq.searchAndPop(id);
+            if(road){
+                cout<<"Green signal , granted (Route id : "<<id<<" )"<<endl;
+                emergencyMode=false;
+            }
+            else{
+                cout<<"Can not grant green signal (Route id : "<<id<<" )"<<endl;
+            }
+
+        }
+        else{
+            while (!pq.isPQEmpty()) {
+                PQNode* road = pq.pop();
+                if (road) {
+                    cout << "Granting green signal to Road " << road->roadId;
+                    cout<< " with density " << road->vehicleDensity << endl;
+                    delete road; // Clean up memory
+                }
+            }
+
+        }
+    }
+    void declareRoadEmergency(){
+        cout<<"Emergency mode declared ! "<<endl;
+        emergencyMode=true;
+    }
+
+    void clearPath(int src, int dest) {
+        cout << "Clearing path for emergency vehicle from " << src << " to " << dest << endl;
+        for (int i = 0; i < pathLength - 1; i++) {
+            cout << "Granting green signal for road (" << emergencyPath[i] << " -> " << emergencyPath[i + 1] << ")" << endl;
+        }
+    }
+
+    void restoreNormalFlow() {
+        emergencyMode = false;
+        cout << "Restoring normal traffic flow..." << endl;
+    }
+
+
+};
+
 class graph{
     public:
     int vertices;
     list*ListArray;
     vehicle cars[50];
     int vehicleCount;
+    //bool blocked;
 
     graph(int vertices){
         this->vertices=vertices;
         ListArray=new list[vertices];
         vehicleCount=0;
+        //this->blocked=false;
     }
 
     void addEdge(int src,int dest, int weight){
@@ -334,6 +402,10 @@ class graph{
             //for updating the distances of neighbouring vertices
             ListNode*neighbour=ListArray[u].head;
             while(neighbour!=nullptr){
+                if(neighbour->blocked){
+                    neighbour=neighbour->next;
+                    continue;
+                }
                 int v=neighbour->dest;
                 int weight=neighbour->weight;
 
@@ -355,71 +427,71 @@ class graph{
             } 
     }
 
-void aStarSearch(int src, int dest, trafficSignalManager& tsm) {
-        int gScore[vertices]; // Cost from start to the current node
-        int fScore[vertices]; // Estimated cost from start to goal via the current node
-        int parent[vertices]; // Track the path
-        bool visited[vertices] = {false};
+    void aStarSearch(int src, int dest, trafficSignalManager& tsm) {
+            int gScore[vertices]; // Cost from start to the current node
+            int fScore[vertices]; // Estimated cost from start to goal via the current node
+            int parent[vertices]; // Track the path
+            bool visited[vertices] = {false};
 
-        // Initialize scores
-        for (int i = 0; i < vertices; i++) {
-            gScore[i] = INT8_MAX;
-            fScore[i] = INT8_MAX;
-            parent[i] = -1;
-        }
-        gScore[src] = 0;
-        fScore[src] = heuristic(src, dest);
-
-        // Priority queue for nodes to explore
-        priorityQueue openSet;
-        openSet.push(src, fScore[src], 0);
-
-        while (!openSet.isPQEmpty()) {
-            PQNode* currentNode = openSet.pop();
-            int current = currentNode->roadId;
-            delete currentNode;
-
-            if (current == dest) {
-                // Reconstruct path
-                reconstructPath(parent, dest, tsm);
-                return;
+            // Initialize scores
+            for (int i = 0; i < vertices; i++) {
+                gScore[i] = INT8_MAX;
+                fScore[i] = INT8_MAX;
+                parent[i] = -1;
             }
+            gScore[src] = 0;
+            fScore[src] = heuristic(src, dest);
 
-            visited[current] = true;
+            // Priority queue for nodes to explore
+            priorityQueue openSet;
+            openSet.push(src, fScore[src], 0);
 
-            ListNode* neighbor = ListArray[current].head;
-            while (neighbor != nullptr) {
-                int neighborNode = neighbor->dest;
-                int weight = neighbor->weight;
+            while (!openSet.isPQEmpty()) {
+                PQNode* currentNode = openSet.pop();
+                int current = currentNode->roadId;
+                delete currentNode;
 
-                if (visited[neighborNode]) {
+                if (current == dest) {
+                    // Reconstruct path
+                    reconstructPath(parent, dest, tsm);
+                    return;
+                }
+
+                visited[current] = true;
+
+                ListNode* neighbor = ListArray[current].head;
+                while (neighbor != nullptr) {
+                    int neighborNode = neighbor->dest;
+                    int weight = neighbor->weight;
+
+                    if (visited[neighborNode]) {
+                        neighbor = neighbor->next;
+                        continue;
+                    }
+
+                    int tentativeGScore = gScore[current] + weight;
+
+                    if (tentativeGScore < gScore[neighborNode]) {
+                        parent[neighborNode] = current;
+                        gScore[neighborNode] = tentativeGScore;
+                        fScore[neighborNode] = gScore[neighborNode] + heuristic(neighborNode, dest);
+
+                        // Add to priority queue
+                        openSet.push(neighborNode, fScore[neighborNode], 0);
+                    }
+
                     neighbor = neighbor->next;
-                    continue;
                 }
-
-                int tentativeGScore = gScore[current] + weight;
-
-                if (tentativeGScore < gScore[neighborNode]) {
-                    parent[neighborNode] = current;
-                    gScore[neighborNode] = tentativeGScore;
-                    fScore[neighborNode] = gScore[neighborNode] + heuristic(neighborNode, dest);
-
-                    // Add to priority queue
-                    openSet.push(neighborNode, fScore[neighborNode], 0);
-                }
-
-                neighbor = neighbor->next;
             }
+
+            cout << "No path found from " << src << " to " << dest << endl;
         }
 
-        cout << "No path found from " << src << " to " << dest << endl;
-    }
-
-    // Heuristic function (example: straight-line distance)
-    int heuristic(int node, int dest) {
-        // Replace with actual heuristic calculation
-        return abs(node - dest);
-    }
+        // Heuristic function (example: straight-line distance)
+        int heuristic(int node, int dest) {
+            // Replace with actual heuristic calculation
+            return abs(node - dest);
+        }
 
     void reconstructPath(int parent[], int dest, trafficSignalManager& tsm) {
         int path[vertices];
@@ -479,6 +551,10 @@ void aStarSearch(int src, int dest, trafficSignalManager& tsm) {
             //for updating the distances of neighbouring vertices
             ListNode*neighbour=ListArray[u].head;
             while(neighbour!=nullptr){
+                if(neighbour->blocked){
+                    neighbour->next;
+                    continue;
+                }
                 int v=neighbour->dest;
                 int weight=neighbour->weight;
 
@@ -492,6 +568,41 @@ void aStarSearch(int src, int dest, trafficSignalManager& tsm) {
             return distance[dest];
         }
     }
+
+    void blockRoad(int src, int dest) {
+        ListNode* temp = ListArray[src].head;
+        while (temp != nullptr) {
+            if (temp->dest == dest) {
+                temp->blocked = true;
+                cout << "Road (" << src << " -> " << dest << ") is now blocked." << endl;
+                return;
+            }
+            temp = temp->next;
+        }
+        cout << "Road (" << src << " -> " << dest << ") not found in the graph." << endl;
+    }
+
+    void blockIntersection(int intersection) {
+        // Block all outgoing roads
+        ListNode* temp = ListArray[intersection].head;
+        while (temp != nullptr) {
+            temp->blocked = true;
+            temp = temp->next;
+        }
+
+        // Block all incoming roads
+        for (int i = 0; i < vertices; i++) {
+            ListNode* temp = ListArray[i].head;
+            while (temp != nullptr) {
+                if (temp->dest == intersection) {
+                    temp->blocked = true;
+                }
+                temp = temp->next;
+            }
+        }
+        cout << "Intersection " << intersection << " is now blocked." << endl;
+    }  
+
 
     void updateTrafficCondition(int src,int dest,int newWeight){
         // will traverse the arrayList to find the source array of the list and then update the weight of respected edge
@@ -611,6 +722,8 @@ void locateVehicle(string id, int currentLocation, int destination) {
 
 
 
+
+
     void displayGraph(){
         for(int i=0;i<vertices;i++){
             cout<<"Intersection "<<i+1<<" : ";
@@ -661,112 +774,151 @@ void locateVehicle(string id, int currentLocation, int destination) {
 };
 
 
-class trafficSignalManager{
-    public:
-    priorityQueue pq;
-    bool emergencyMode;
-    int emergencyPath[100];
-    int pathLength;// length for emergency path 
 
-    trafficSignalManager(){
-        emergencyMode=false;
-        pathLength=0;
-    }
 
-    void addroad(int roadId,int density){
-        pq.push(roadId,density,30);
-    }
+// function for monitoring system performance
+    void monitorPerformance(graph& g, int src, int dest) {
+        using namespace std::chrono;
+        auto start = high_resolution_clock::now();
 
-    void manageSignals(){
-        if(emergencyMode){
-            cout<<"Route id : ";
-            int id;
-            cin>>id;
-            PQNode*road=pq.searchAndPop(id);
-            if(road){
-                cout<<"Green signal , granted (Route id : "<<id<<" )"<<endl;
-                emergencyMode=false;
-            }
-            else{
-                cout<<"Can not grant green signal (Route id : "<<id<<" )"<<endl;
-            }
+        g.DijkstraAlgo(src, dest);
 
-        }
-        else{
-            while (!pq.isPQEmpty()) {
-                PQNode* road = pq.pop();
-                if (road) {
-                    cout << "Granting green signal to Road " << road->roadId;
-                    cout<< " with density " << road->vehicleDensity << endl;
-                    delete road; // Clean up memory
-                }
-            }
+        auto end = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(end - start);
 
-        }
-    }
-    void declareRoadEmergency(){
-        cout<<"Emergency mode declared ! "<<endl;
-        emergencyMode=true;
-    }
-
-    void clearPath(int src, int dest) {
-        cout << "Clearing path for emergency vehicle from " << src << " to " << dest << endl;
-        for (int i = 0; i < pathLength - 1; i++) {
-            cout << "Granting green signal for road (" << emergencyPath[i] << " -> " << emergencyPath[i + 1] << ")" << endl;
-        }
-    }
-
-    void restoreNormalFlow() {
-        emergencyMode = false;
-        cout << "Restoring normal traffic flow..." << endl;
+        cout << "Recalculation completed in " << duration.count() << " ms." << endl;
     }
 
 
-};
+int main() {
+    int vertices;
+    cout << "Enter the number of intersections (vertices) in the city graph: ";
+    cin >> vertices;
 
-
-int main(){
-    int vertices=5;
     graph cityGraph(vertices);
+    cout << "\nCity Road Network initialized with " << vertices << " intersections.\n";
 
-    //loading the dataset
-    cityGraph.loadMapFromFile("map.csv");
-//    cityGraph.addEdge(0,1,5);
-//    cityGraph.addEdge(0,2,15);
-//    cityGraph.addEdge(1,2,10);
-//    cityGraph.addEdge(1,3,9);
-//    cityGraph.addEdge(2,3,7);
-//    cityGraph.addEdge(3,4,3);
+    int choice;
+    do {
+        cout << "\n--- Traffic Management System ---\n";
+        cout << "1. Load map from file\n";
+        cout << "2. Display city road network\n";
+        cout << "3. Add a new intersection\n";
+        cout << "4. Remove an intersection\n";
+        cout << "5. Block a road\n";
+        cout << "6. Locate a vehicle and find shortest path\n";
+        cout << "7. Simulate vehicle movements\n";
+        cout << "8. Update traffic condition\n";
+        cout << "9. Manage traffic signals\n";
+        cout << "10. Declare and handle emergency\n";
+        cout << "11. Monitor congestion levels\n";
+        cout << "12. Monitor system performance\n";
+        cout << "0. Exit\n";
+        cout << "Enter your choice: ";
+        cin >> choice;
 
-    //displaying the map
-    cout<<"City Road Network : "<<endl;
-    cityGraph.displayGraph();
-    //cityGraph.removeIntersection(0);
-    cout<<endl;
-    cout<<endl;
-    // cityGraph.displayGraph();
-    // cout<<endl;
-    // cout<<endl;
-    //cityGraph.LoadVehiclesFromFile("vehicles.csv");
-    cityGraph.locateVehicle("v1",0,4);
-    cityGraph.locateVehicle("v2",1,3);
-    cityGraph.locateVehicle("v3",0,2);
+        switch (choice) {
+            case 1: {
+                string filename;
+                cout << "Enter the file name to load map (e.g., map.csv): ";
+                cin >> filename;
+                cityGraph.loadMapFromFile(filename);
+                cout << "Map loaded successfully!\n";
+                break;
+            }
+            case 2:
+                cout << "Displaying City Road Network:\n";
+                cityGraph.displayGraph();
+                break;
+            case 3: {
+                int newIntersection;
+                cout << "Enter new intersection index: ";
+                cin >> newIntersection;
+                cityGraph.addNewIntersection(newIntersection);
+                break;
+            }
+            case 4: {
+                int intersection;
+                cout << "Enter intersection index to remove: ";
+                cin >> intersection;
+                cityGraph.removeIntersection(intersection);
+                break;
+            }
+            case 5: {
+                int src, dest;
+                cout << "Enter source and destination to block the road (e.g., 0 1): ";
+                cin >> src >> dest;
+                cityGraph.blockRoad(src, dest);
+                break;
+            }
+            case 6: {
+                string id;
+                int src, dest;
+                cout << "Enter vehicle ID, source, and destination (e.g., v1 0 4): ";
+                cin >> id >> src >> dest;
+                cityGraph.locateVehicle(id, src, dest);
+                break;
+            }
+            case 7:
+                cout << "Simulating vehicle movements:\n";
+                cityGraph.stimulateVehicles();
+                break;
+            case 8: {
+                int src, dest, weight;
+                cout << "Enter source, destination, and new weight for the road (e.g., 1 2 15): ";
+                cin >> src >> dest >> weight;
+                cityGraph.updateTrafficCondition(src, dest, weight);
+                break;
+            }
+            case 9: {
+                trafficSignalManager tsm;
+                int id, density;
+                cout << "Enter road ID and vehicle density (e.g., 1 50): ";
+                cin >> id >> density;
+                tsm.addroad(id, density);
+                cout << "Managing traffic signals:\n";
+                tsm.manageSignals();
+                break;
+            }
+            case 10: {
+                int src, dest;
+                trafficSignalManager tsm;
+                cout << "Enter source and destination for emergency path: ";
+                cin >> src >> dest;
+                tsm.declareRoadEmergency();
+                cityGraph.aStarSearch(src, dest, tsm);
+                tsm.clearPath(src, dest);
+                tsm.restoreNormalFlow();
+                break;
+            }
+            case 11: {
+                HashTable hst;
+                int threshold, count;
+                string roadId;
+                cout << "Enter road ID and vehicle count (e.g., 0-4 15): ";
+                cin >> roadId >> count;
+                hst.insert(roadId, count);
+                cout << "Enter congestion threshold: ";
+                cin >> threshold;
+                hst.identifyCongestedRoads(threshold);
+                hst.displayCongestionLevelBar();
+                break;
+            }
+            case 12: {
+                int src, dest;
+                cout << "Enter source and destination for performance monitoring: ";
+                cin >> src >> dest;
+                monitorPerformance(cityGraph, src, dest);
+                break;
+            }
+            case 0:
+                cout << "Exiting Traffic Management System. Goodbye!\n";
+                break;
+            default:
+                cout << "Invalid choice! Please try again.\n";
+        }
+    } while (choice != 0);
 
-    cout<<endl<<endl;
-
-    cityGraph.stimulateVehicles();
-
-    trafficSignalManager tsm;
-    tsm.addroad(1,50);
-    tsm.addroad(2,100);
-    tsm.addroad(3,30);
-
-    tsm.manageSignals();
-
-    HashTable hst;
-    hst.insert("0-4",5);
-    hst.insert("1-3",10);
-    hst.insert("0-2",13);
-    hst.displayCongestionLevelBar();
-    hst.identifyCongestedRoads(10);
+    return 0;
 }
+
