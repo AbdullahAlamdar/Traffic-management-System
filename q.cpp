@@ -355,6 +355,95 @@ class graph{
             } 
     }
 
+void aStarSearch(int src, int dest, trafficSignalManager& tsm) {
+        int gScore[vertices]; // Cost from start to the current node
+        int fScore[vertices]; // Estimated cost from start to goal via the current node
+        int parent[vertices]; // Track the path
+        bool visited[vertices] = {false};
+
+        // Initialize scores
+        for (int i = 0; i < vertices; i++) {
+            gScore[i] = INT8_MAX;
+            fScore[i] = INT8_MAX;
+            parent[i] = -1;
+        }
+        gScore[src] = 0;
+        fScore[src] = heuristic(src, dest);
+
+        // Priority queue for nodes to explore
+        priorityQueue openSet;
+        openSet.push(src, fScore[src], 0);
+
+        while (!openSet.isPQEmpty()) {
+            PQNode* currentNode = openSet.pop();
+            int current = currentNode->roadId;
+            delete currentNode;
+
+            if (current == dest) {
+                // Reconstruct path
+                reconstructPath(parent, dest, tsm);
+                return;
+            }
+
+            visited[current] = true;
+
+            ListNode* neighbor = ListArray[current].head;
+            while (neighbor != nullptr) {
+                int neighborNode = neighbor->dest;
+                int weight = neighbor->weight;
+
+                if (visited[neighborNode]) {
+                    neighbor = neighbor->next;
+                    continue;
+                }
+
+                int tentativeGScore = gScore[current] + weight;
+
+                if (tentativeGScore < gScore[neighborNode]) {
+                    parent[neighborNode] = current;
+                    gScore[neighborNode] = tentativeGScore;
+                    fScore[neighborNode] = gScore[neighborNode] + heuristic(neighborNode, dest);
+
+                    // Add to priority queue
+                    openSet.push(neighborNode, fScore[neighborNode], 0);
+                }
+
+                neighbor = neighbor->next;
+            }
+        }
+
+        cout << "No path found from " << src << " to " << dest << endl;
+    }
+
+    // Heuristic function (example: straight-line distance)
+    int heuristic(int node, int dest) {
+        // Replace with actual heuristic calculation
+        return abs(node - dest);
+    }
+
+    void reconstructPath(int parent[], int dest, trafficSignalManager& tsm) {
+        int path[vertices];
+        int length = 0;
+
+        for (int v = dest; v != -1; v = parent[v]) {
+            path[length++] = v;
+        }
+
+        // Reverse the path and store it in trafficSignalManager
+        tsm.pathLength = length;
+        for (int i = 0; i < length; i++) {
+            tsm.emergencyPath[i] = path[length - 1 - i];
+        }
+
+        // Display the path
+        cout << "Fastest path for emergency vehicle: ";
+        for (int i = 0; i < length; i++) {
+            cout << tsm.emergencyPath[i];
+            if (i < length - 1) cout << " -> ";
+        }
+        cout << endl;
+    }
+
     int calculatePathLength(int src, int dest){
         // arrays 
         int distance[vertices];
@@ -576,9 +665,12 @@ class trafficSignalManager{
     public:
     priorityQueue pq;
     bool emergencyMode;
+    int emergencyPath[100];
+    int pathLength;// length for emergency path 
 
     trafficSignalManager(){
         emergencyMode=false;
+        pathLength=0;
     }
 
     void addroad(int roadId,int density){
@@ -616,6 +708,19 @@ class trafficSignalManager{
         cout<<"Emergency mode declared ! "<<endl;
         emergencyMode=true;
     }
+
+    void clearPath(int src, int dest) {
+        cout << "Clearing path for emergency vehicle from " << src << " to " << dest << endl;
+        for (int i = 0; i < pathLength - 1; i++) {
+            cout << "Granting green signal for road (" << emergencyPath[i] << " -> " << emergencyPath[i + 1] << ")" << endl;
+        }
+    }
+
+    void restoreNormalFlow() {
+        emergencyMode = false;
+        cout << "Restoring normal traffic flow..." << endl;
+    }
+
 
 };
 
