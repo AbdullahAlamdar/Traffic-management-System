@@ -48,6 +48,110 @@ class PQNode{
         next=nullptr;
     }
 };
+class HashNode{
+    public:
+    string roadID;
+    int vehicleCount;
+    HashNode*next;
+
+    HashNode(string roadID,int vehicleCount){
+        this->roadID=roadID;
+        this->vehicleCount=vehicleCount;
+        next=nullptr;
+    }
+};
+
+class HashTable{
+    public:
+    static const int tableSize=200;
+    HashNode*table[tableSize];
+
+    HashTable(){
+        for(int i=0;i<tableSize;i++){
+            table[i]=nullptr;
+        }
+    }
+
+    int hashFunction(string roadId){
+        int hash =0;
+        for(int i=0;i<roadId.length();i++){
+            hash=(hash*31+roadId[i])%tableSize;
+        }
+        return hash;
+    }
+    void insert(string roadId, int VehicleCount){
+        int index=hashFunction(roadId);
+
+        HashNode*head=table[index];
+
+        while(head!=nullptr){
+            if(head->roadID==roadId){
+                head->vehicleCount+=VehicleCount;
+                return;
+            }
+            head=head->next;
+        }
+
+        // in case of new node
+        HashNode*nn=new HashNode(roadId,VehicleCount);
+        nn->next=table[index];
+        table[index]=nn;
+    }
+
+    int getVehicleCount(string roadId){
+        int index=hashFunction(roadId);
+        HashNode*head=table[index];
+
+        while(head!=nullptr){
+            if(head->roadID==roadId){
+                return head->vehicleCount;
+            }
+            head=head->next;
+        }
+        return 0;
+    }
+
+    void identifyCongestedRoads(int threshold){
+        cout<<"(Congested roads Vehicle Count > "<<threshold<<" ) "<<endl;
+        for(int i=0;i<tableSize;i++){
+            HashNode*head=table[i];
+
+            while(head!=nullptr){
+                if(head->vehicleCount>threshold){
+                    cout<<"Road with ID : ("<<head->roadID<<") is congested ! "<<endl;
+                }
+                head=head->next;
+            }
+            
+        } 
+    }
+    void displayCongestionLevelBar(){
+        cout<<"Congestion Level (Road ID : | Vehicle Count )"<<endl;
+        for(int i=0;i<tableSize;i++){
+            HashNode*head=table[i];
+            
+            while(head!=nullptr){
+                cout<<head->roadID<<": ";
+                for(int j=0;j<head->vehicleCount;j++){
+                    cout<<"| ";
+                }
+                cout<<" "<<head->vehicleCount<<"Vehicles"<<endl;
+                head=head->next;
+            }
+        }
+    }
+
+    void display() {
+        cout << "Hash Table (Road ID -> Vehicle Count):" << endl;
+        for (int i = 0; i < tableSize; i++) {
+            HashNode* head = table[i];
+            while (head != nullptr) {
+                cout << head->roadID << " -> " << head->vehicleCount << endl;
+                head = head->next;
+            }
+        }
+    }
+};
 
 class priorityQueue{
     public:
@@ -553,4 +657,11 @@ int main(){
     tsm.addroad(3,30);
 
     tsm.manageSignals();
+
+    HashTable hst;
+    hst.insert("0-4",5);
+    hst.insert("1-3",10);
+    hst.insert("0-2",13);
+    hst.displayCongestionLevelBar();
+    hst.identifyCongestedRoads(10);
 }
