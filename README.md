@@ -61,22 +61,22 @@ to run the program , run following command:
 file
 
 ### **1. Example Output : **
-// City Road Network
+City Road Network
 Intersection 0: (1, 10) (2, 15)
 Intersection 1: (2, 10) (3, 5)
 Intersection 2: (3, 10)
 
-// Shortest Paths for Vehicles
+Shortest Paths for Vehicles
 Shortest path for vehicle v1: 0 -> 1 -> 3 -> 4
 
-// Traffic Signals Information
+Traffic Signals Information
 Managing green signals based on vehicle density
 
-// Congestion Levels (represented with bar charts)
-0-1: | | | | 5 Vehicles
-1-3: | | | | | | 10 Vehicles
+Congestion Levels (represented with bar charts)
+- **0-1: | | | | 5 Vehicles**
+- **1-3: | | | | | | 10 Vehicles**
 
-// Performance Monitoring
+Performance Monitoring
 Recalculating shortest path took 120 milliseconds.
 
 
